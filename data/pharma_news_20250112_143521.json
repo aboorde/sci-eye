@@ -1,0 +1,83 @@
+{
+  "run_timestamp": "2025-01-12T14:35:21.847293",
+  "total_articles_fetched": 45,
+  "total_articles_classified": 3,
+  "total_articles_discarded": 42,
+  "classification_rate": "6.7%",
+  "configuration": {
+    "feeds": ["FierceBiotech", "FiercePharma", "Evaluate Vantage", "BioPharma Dive", "Pharmaceutical Technology"],
+    "topics_monitored": 25,
+    "classification_threshold": 0.7
+  },
+  "articles": [
+    {
+      "id": "f47ac10b58a4e7d8c9e07b5f2a3d4c8e",
+      "title": "FDA Grants Accelerated Approval to Novel CAR-T Therapy for Relapsed B-Cell Lymphoma",
+      "original_description": "The FDA has granted accelerated approval to Kymriah (tisagenlecleucel) for adult patients with relapsed or refractory follicular lymphoma after two or more lines of systemic therapy. The approval is based on results from the ELARA trial showing an overall response rate of 86%.",
+      "summary": "The FDA has granted accelerated approval to Novartis' CAR-T therapy Kymriah for treating adult patients with relapsed or refractory follicular lymphoma who have failed at least two prior therapies. This marks a significant expansion of the CAR-T therapy landscape beyond its initial approvals in acute lymphoblastic leukemia and diffuse large B-cell lymphoma.\n\nThe approval was based on compelling results from the Phase 2 ELARA trial, which demonstrated an 86% overall response rate with 69% of patients achieving complete remission. The median duration of response has not yet been reached, suggesting durable benefits. Common adverse events included cytokine release syndrome and neurological toxicities, consistent with the known CAR-T safety profile.\n\nThis approval represents a major advancement for follicular lymphoma patients who historically have had limited treatment options after multiple relapses. The accelerated approval pathway requires Novartis to conduct confirmatory trials, but the strong efficacy signals suggest this could become a new standard of care for this patient population.",
+      "link": "https://www.fiercebiotech.com/biotech/fda-grants-accelerated-approval-car-t-therapy-lymphoma",
+      "topics": [
+        "FDA Accelerated Approval",
+        "Drug approval",
+        "Clinical trial results",
+        "Breakthrough therapy designation"
+      ],
+      "confidence_scores": {
+        "FDA Accelerated Approval": 0.98,
+        "Drug approval": 0.95,
+        "Clinical trial results": 0.92,
+        "Breakthrough therapy designation": 0.78
+      },
+      "date_published": "Fri, 12 Jan 2025 14:30:00 GMT",
+      "date_processed": "2025-01-12T14:35:18.523461",
+      "source_feed": "FierceBiotech",
+      "has_full_content": true
+    },
+    {
+      "id": "8b7d3f2a91c4e6b5d8f1a3b7c9e2d4f6",
+      "title": "Positive Interim Analysis Results for Alzheimer's Drug Lead to Early Trial Stoppage",
+      "original_description": "Eli Lilly announced that an independent data monitoring committee recommended stopping the Phase 3 TRAILBLAZER-ALZ 2 study early due to efficacy after a pre-planned interim analysis showed donanemab met all primary and secondary endpoints in early symptomatic Alzheimer's disease.",
+      "summary": "Eli Lilly's investigational Alzheimer's drug donanemab has achieved a major milestone with the early stoppage of its Phase 3 TRAILBLAZER-ALZ 2 study following overwhelmingly positive interim analysis results. The independent data monitoring committee recommended halting the trial after donanemab demonstrated significant efficacy across all primary and secondary endpoints in patients with early symptomatic Alzheimer's disease.\n\nThe trial enrolled over 1,700 participants with early-stage Alzheimer's who had confirmed amyloid and tau pathology. Donanemab showed a 35% slowing of clinical decline compared to placebo on the integrated Alzheimer's Disease Rating Scale (iADRS), with particularly strong results in patients with lower baseline tau levels. The drug also met key secondary endpoints including activities of daily living and cognitive function measures.\n\nThis represents a potential breakthrough in Alzheimer's treatment, joining Biogen's Aduhelm and Eisai/Biogen's Leqembi in the emerging class of amyloid-targeting therapies. However, donanemab's monthly dosing schedule and potential for treatment completion after amyloid clearance could offer advantages. Lilly plans to submit for FDA approval in the second quarter of 2025, with the positive interim results likely supporting an accelerated approval pathway.",
+      "link": "https://www.fiercepharma.com/pharma/lillys-alzheimers-drug-shows-positive-interim-results",
+      "topics": [
+        "Interim analysis were positive",
+        "Clinical trial results",
+        "Phase 3 trial",
+        "Breakthrough therapy designation"
+      ],
+      "confidence_scores": {
+        "Interim analysis were positive": 0.99,
+        "Clinical trial results": 0.97,
+        "Phase 3 trial": 0.96,
+        "Breakthrough therapy designation": 0.72
+      },
+      "date_published": "Fri, 12 Jan 2025 15:00:00 GMT",
+      "date_processed": "2025-01-12T14:35:19.912734",
+      "source_feed": "FiercePharma",
+      "has_full_content": true
+    },
+    {
+      "id": "3c9f7b2a4e8d1c6b5a9f3d7e2b4c8a1d",
+      "title": "Rare Disease Therapy Receives Orphan Drug Designation for Duchenne Muscular Dystrophy",
+      "original_description": "Sarepta Therapeutics announced that the FDA has granted Orphan Drug Designation to SRP-9001, its investigational gene therapy for Duchenne muscular dystrophy. The designation provides seven years of market exclusivity upon approval and eligibility for tax credits.",
+      "summary": "Sarepta Therapeutics has achieved a significant regulatory milestone with the FDA granting Orphan Drug Designation (ODD) to SRP-9001, their investigational AAV-based gene therapy for Duchenne muscular dystrophy (DMD). This designation recognizes DMD as a rare disease affecting fewer than 200,000 people in the US and provides important benefits including seven years of market exclusivity post-approval, tax credits for clinical development costs, and waived FDA application fees.\n\nSRP-9001 is designed to deliver a micro-dystrophin gene directly to muscle tissue via AAV delivery, potentially addressing the root cause of DMD rather than just managing symptoms. The therapy has shown promising results in early clinical trials, with patients demonstrating improved muscle function and reduced disease progression markers. The ongoing EMBARK Phase 3 study is evaluating the therapy in ambulatory DMD patients aged 4-7 years.\n\nThe orphan drug designation is particularly meaningful for the DMD community, where treatment options remain limited despite recent approvals of exon-skipping therapies. If successful, SRP-9001 could represent the first gene therapy for DMD, offering hope for a one-time treatment that could fundamentally alter disease trajectory. Sarepta plans to file for accelerated approval based on the EMBARK study results expected later this year.",
+      "link": "https://www.evaluate.com/vantage/articles/news/sarepta-gene-therapy-orphan-designation",
+      "topics": [
+        "Orphan Drug Designation",
+        "Clinical trial results",
+        "Phase 3 trial",
+        "Fast track designation"
+      ],
+      "confidence_scores": {
+        "Orphan Drug Designation": 0.99,
+        "Clinical trial results": 0.81,
+        "Phase 3 trial": 0.79,
+        "Fast track designation": 0.71
+      },
+      "date_published": "Fri, 12 Jan 2025 16:15:00 GMT",
+      "date_processed": "2025-01-12T14:35:21.345892",
+      "source_feed": "Evaluate Vantage",
+      "has_full_content": true
+    }
+  ]
+}

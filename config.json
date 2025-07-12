@@ -1,0 +1,62 @@
+{
+  "rss_feeds": [
+    {
+      "url": "https://www.fiercebiotech.com/rss/xml",
+      "name": "FierceBiotech"
+    },
+    {
+      "url": "https://www.fiercepharma.com/rss/xml", 
+      "name": "FiercePharma"
+    },
+    {
+      "url": "https://www.biopharmadive.com/feeds/news/",
+      "name": "BioPharma Dive"
+    },
+    {
+      "url": "https://www.pharmtech.com/rss",
+      "name": "Pharmaceutical Technology"
+    }
+  ],
+  "topics": [
+    "Orphan Drug Designation",
+    "Interim analysis were positive",
+    "FDA Accelerated Approval",
+    "Clinical trial results",
+    "Drug approval",
+    "Safety concerns",
+    "Market authorization",
+    "Phase 3 trial",
+    "Phase 2 trial",
+    "Breakthrough therapy designation",
+    "EMA approval",
+    "Patent expiration",
+    "Biosimilar approval",
+    "Merger and acquisition",
+    "FDA Complete Response Letter",
+    "Priority review",
+    "Fast track designation",
+    "New drug application",
+    "Biologics license application",
+    "Advisory committee meeting",
+    "Label expansion",
+    "Pricing and reimbursement",
+    "Real-world evidence"
+  ],
+  "ai_settings": {
+    "model": "gpt-4.1-nano",
+    "classification_temperature": 0.3,
+    "summary_temperature": 0.5,
+    "max_summary_tokens": 700,
+    "classification_threshold": 0.7
+  },
+  "scraping": {
+    "timeout": 30,
+    "max_retries": 3,
+    "rate_limit_delay": 1
+  },
+  "processing": {
+    "parallel_classification": true,
+    "max_classification_workers": 5,
+    "batch_classification_size": 5
+  }
+}
