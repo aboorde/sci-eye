@@ -1,5 +1,5 @@
 <script>
-  import { Activity, Zap, Clock, TrendingUp } from 'lucide-svelte';
+  import { Activity, Zap, Clock, TrendingUp, Copy } from 'lucide-svelte';
   import { monitoringRuns } from '$lib/stores/articles';
   
   $: latestRun = $monitoringRuns[0] || null;
@@ -9,17 +9,20 @@
     if (!latestRun) return null;
     
     const fetched = latestRun.total_articles_fetched || 0;
+    const duplicates = latestRun.total_duplicates_skipped || 0;
+    const unique = latestRun.total_unique_articles || (fetched - duplicates);
     const classified = latestRun.total_articles_classified || 0;
     const discarded = latestRun.total_articles_discarded || 0;
     
-    // Estimate time saved (3 seconds per discarded article)
-    const timeSaved = discarded * 3;
+    // Estimate time saved (3 seconds per discarded article + 5 seconds per duplicate)
+    const timeSaved = (discarded * 3) + (duplicates * 5);
     
     return {
-      classificationRate: fetched > 0 ? (classified / fetched * 100).toFixed(1) : 0,
+      classificationRate: unique > 0 ? (classified / unique * 100).toFixed(1) : 0,
       articlesSkipped: discarded,
+      duplicatesSkipped: duplicates,
       timeSaved: formatTime(timeSaved),
-      efficiency: fetched > 0 ? (discarded / fetched * 100).toFixed(0) : 0
+      efficiency: fetched > 0 ? ((discarded + duplicates) / fetched * 100).toFixed(0) : 0
     };
   }
   
@@ -53,6 +56,16 @@
         <div class="flex-1">
           <p class="text-sm font-medium">Articles Skipped</p>
           <p class="text-2xl font-bold text-success">{performanceStats.articlesSkipped}</p>
+        </div>
+      </div>
+      
+      <div class="flex items-start gap-3">
+        <div class="p-2 bg-warning/10 rounded-lg">
+          <Copy size={16} class="text-warning" />
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-medium">Duplicates Removed</p>
+          <p class="text-2xl font-bold text-warning">{performanceStats.duplicatesSkipped}</p>
         </div>
       </div>
       

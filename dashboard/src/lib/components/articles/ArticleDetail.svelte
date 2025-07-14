@@ -7,7 +7,8 @@
     formatRelativeTime, 
     getTopicColor, 
     formatConfidence,
-    getConfidenceColor 
+    getConfidenceColor,
+    stripHtmlTags 
   } from '$lib/utils/formatters';
   
   function closeModal() {
@@ -28,17 +29,21 @@
     on:click={handleBackdropClick}
   >
     <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="fixed inset-0 bg-black/50" />
+      <div 
+        class="fixed inset-0 bg-black/50" 
+        on:click={closeModal}
+      />
       
       <div 
         class="relative bg-base-100 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
         transition:fly={{ y: 50, duration: 300 }}
+        on:click|stopPropagation
       >
         <!-- Header -->
         <div class="sticky top-0 bg-base-100 border-b border-base-200 p-6 z-10">
           <div class="flex items-start justify-between gap-4">
             <h2 class="text-2xl font-bold pr-8">
-              {$selectedArticle.title}
+              {stripHtmlTags($selectedArticle.title)}
             </h2>
             <button 
               class="btn btn-ghost btn-circle btn-sm"

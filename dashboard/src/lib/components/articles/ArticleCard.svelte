@@ -7,7 +7,9 @@
     truncateText, 
     getTopicColor, 
     formatConfidence,
-    getSourceIcon 
+    getSourceIcon,
+    stripHtmlTags,
+    formatPublishedDate 
   } from '$lib/utils/formatters';
   
   export let article;
@@ -34,12 +36,12 @@
         <svelte:component this={Newspaper} size={20} class="text-primary" />
       </div>
       <span class="text-xs text-base-content/50">
-        {formatRelativeTime(article.date_processed)}
+        {formatPublishedDate(article.date_published)}
       </span>
     </div>
     
     <h3 class="font-semibold mb-2 line-clamp-2">
-      {article.title}
+      {stripHtmlTags(article.title)}
     </h3>
     
     <p class="text-sm text-base-content/60 mb-3 line-clamp-3">
@@ -69,10 +71,10 @@
     <div class="flex-1">
       <div class="flex items-start justify-between mb-2">
         <h3 class="font-semibold line-clamp-1 flex-1 mr-4">
-          {article.title}
+          {stripHtmlTags(article.title)}
         </h3>
         <span class="text-xs text-base-content/50 whitespace-nowrap">
-          {formatRelativeTime(article.date_processed)}
+          {formatPublishedDate(article.date_published)}
         </span>
       </div>
       

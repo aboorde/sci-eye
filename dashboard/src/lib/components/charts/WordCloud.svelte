@@ -1,5 +1,6 @@
 <script>
   import { allArticles } from '$lib/stores/articles';
+  import { stripHtmlTags } from '$lib/utils/formatters';
   
   $: wordFrequencies = calculateWordFrequencies($allArticles);
   
@@ -15,7 +16,7 @@
     const wordCounts = {};
     
     articles.forEach(article => {
-      const text = `${article.title} ${article.summary || article.original_description}`.toLowerCase();
+      const text = `${stripHtmlTags(article.title)} ${article.summary || article.original_description}`.toLowerCase();
       const words = text.match(/\b[a-z]{4,}\b/g) || [];
       
       words.forEach(word => {

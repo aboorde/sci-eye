@@ -45,13 +45,29 @@ export const filters = createFiltersStore();
 // All articles aggregated from runs
 export const allArticles = derived(
   monitoringRuns,
-  $runs => aggregateArticles($runs)
+  $runs => {
+    const articles = aggregateArticles($runs);
+    // Sort by published date (newest first)
+    return articles.sort((a, b) => {
+      const dateA = new Date(a.date_published || a.date_processed);
+      const dateB = new Date(b.date_published || b.date_processed);
+      return dateB - dateA;
+    });
+  }
 );
 
 // Filtered articles based on current filters
 export const filteredArticles = derived(
   [allArticles, filters],
-  ([$articles, $filters]) => filterArticles($articles, $filters)
+  ([$articles, $filters]) => {
+    const filtered = filterArticles($articles, $filters);
+    // Sort by published date (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.date_published || a.date_processed);
+      const dateB = new Date(b.date_published || b.date_processed);
+      return dateB - dateA;
+    });
+  }
 );
 
 // Topic distribution

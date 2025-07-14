@@ -1,11 +1,15 @@
 <script>
   import { Calendar, ExternalLink } from 'lucide-svelte';
   import { allArticles } from '$lib/stores/articles';
-  import { formatRelativeTime, truncateText, getTopicColor } from '$lib/utils/formatters';
+  import { formatRelativeTime, truncateText, getTopicColor, stripHtmlTags, formatPublishedDate } from '$lib/utils/formatters';
   import { base } from '$app/paths';
   
   $: recentArticles = $allArticles
-    .sort((a, b) => new Date(b.date_processed) - new Date(a.date_processed))
+    .sort((a, b) => {
+      const dateA = new Date(a.date_published || a.date_processed);
+      const dateB = new Date(b.date_published || b.date_processed);
+      return dateB - dateA;
+    })
     .slice(0, 5);
 </script>
 
@@ -26,7 +30,7 @@
       {#each recentArticles as article}
         <div class="border-l-4 border-primary pl-4 py-2">
           <h3 class="font-medium mb-1 line-clamp-2">
-            {article.title}
+            {stripHtmlTags(article.title)}
           </h3>
           
           <p class="text-sm text-base-content/60 mb-2 line-clamp-2">
@@ -36,7 +40,7 @@
           <div class="flex flex-wrap items-center gap-2 text-xs">
             <div class="flex items-center gap-1 text-base-content/50">
               <Calendar size={12} />
-              {formatRelativeTime(article.date_processed)}
+              {formatPublishedDate(article.date_published)}
             </div>
             
             {#each article.topics.slice(0, 2) as topic}

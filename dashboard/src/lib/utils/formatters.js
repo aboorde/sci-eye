@@ -60,6 +60,38 @@ export function truncateText(text, maxLength = 150) {
 }
 
 /**
+ * Strip HTML tags from text
+ * @param {string} text - Text with potential HTML tags
+ * @returns {string} Plain text without HTML
+ */
+export function stripHtmlTags(text) {
+  if (!text) return text;
+  // Remove HTML tags using a simple regex
+  return text.replace(/<[^>]*>/g, '');
+}
+
+/**
+ * Format published date string
+ * @param {string} dateString - Date string like "Jul 11, 2025 11:43am"
+ * @returns {string} Formatted date
+ */
+export function formatPublishedDate(dateString) {
+  if (!dateString) return 'Unknown';
+  try {
+    // Parse the date string
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    // Format as "Jul 11, 2025"
+    return format(date, 'MMM d, yyyy');
+  } catch {
+    // If parsing fails, try to extract just the date part
+    const match = dateString.match(/^(\w+\s+\d+,\s+\d{4})/);
+    return match ? match[1] : dateString;
+  }
+}
+
+/**
  * Format article count
  * @param {number} count - Article count
  * @returns {string} Formatted count

@@ -92,9 +92,24 @@ export function groupArticlesByDate(articles) {
   const grouped = {};
 
   for (const article of articles) {
-    const date = article.date_processed ? 
-      format(parseISO(article.date_processed), 'yyyy-MM-dd') : 
-      'Unknown';
+    let date = 'Unknown';
+    
+    if (article.date_published) {
+      try {
+        // Parse the date_published string (e.g., "Jul 11, 2025 11:43am")
+        const parsedDate = new Date(article.date_published);
+        if (!isNaN(parsedDate.getTime())) {
+          date = format(parsedDate, 'yyyy-MM-dd');
+        }
+      } catch (e) {
+        // If parsing fails, fallback to date_processed
+        if (article.date_processed) {
+          date = format(parseISO(article.date_processed), 'yyyy-MM-dd');
+        }
+      }
+    } else if (article.date_processed) {
+      date = format(parseISO(article.date_processed), 'yyyy-MM-dd');
+    }
     
     if (!grouped[date]) {
       grouped[date] = [];

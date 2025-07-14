@@ -51,7 +51,7 @@ async function getDataFileList() {
   }
 
   // Return empty array if no manifest - all JSON files will be included at build time
-  return [];
+  return ['pharma_news_20250714_012155.json'];
 }
 
 /**

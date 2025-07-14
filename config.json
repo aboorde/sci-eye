@@ -13,46 +13,51 @@
       "name": "BioPharma Dive"
     },
     {
+      "url": "https://www.drugs.com/feeds/new_drug_applications.xml/",
+      "name": "Drug Applications "
+    },
+    {
+      "url": "https://www.drugs.com/feeds/new_drug_approvals.xml",
+      "name": "Drug Approvals"
+    },
+    {
+      "url": "https://www.drugs.com/feeds/fda_alerts.xml",
+      "name": "FDA Alerts"
+    },
+    {
       "url": "https://www.pharmtech.com/rss",
       "name": "Pharmaceutical Technology"
     }
   ],
   "topics": [
-    "Orphan Drug Designation",
-    "Interim analysis were positive",
+    "Success in preclinical study",
+    "Orphan drug designation",
+    "Series B fundraising complete",
+    "Interim analysis results were positive",
     "FDA Accelerated Approval",
-    "Clinical trial results",
-    "Drug approval",
-    "Safety concerns",
-    "Market authorization",
-    "Phase 3 trial",
-    "Phase 2 trial",
-    "Breakthrough therapy designation",
-    "EMA approval",
-    "Patent expiration",
-    "Biosimilar approval",
-    "Merger and acquisition",
-    "FDA Complete Response Letter",
-    "Priority review",
-    "Fast track designation",
-    "New drug application",
-    "Biologics license application",
-    "Advisory committee meeting",
-    "Label expansion",
-    "Pricing and reimbursement",
-    "Real-world evidence"
+    "Breakthrough therapy designation"
   ],
   "ai_settings": {
     "model": "gpt-4.1-nano",
-    "classification_temperature": 0.3,
+    "classification_temperature": 0.1,
     "summary_temperature": 0.5,
     "max_summary_tokens": 700,
-    "classification_threshold": 0.7
+    "classification_threshold": 1.0
   },
   "scraping": {
     "timeout": 30,
     "max_retries": 3,
-    "rate_limit_delay": 1
+    "rate_limit_delay": 2,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Connection": "keep-alive",
+      "Upgrade-Insecure-Requests": "1",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache"
+    }
   },
   "processing": {
     "parallel_classification": true,

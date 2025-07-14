@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmaceutical News Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.24/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        .modal-open { overflow: hidden; }
+        .article-content { max-height: 60vh; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div id="app" class="container mx-auto p-4">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">💊 Pharmaceutical News Intelligence</h1>
+            <p class="text-gray-400">AI-Classified Industry News</p>
+            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="lastUpdated"></span></p>
+        </div>
+
+        <!-- File Input -->
+        <div class="card bg-base-200 shadow-xl mb-6">
+            <div class="card-body">
+                <h2 class="card-title mb-4">Load News Data</h2>
+                <input type="file" id="fileInput" accept=".json" class="file-input file-input-bordered w-full max-w-xs" />
+                <p class="text-sm text-gray-400 mt-2">Select a pharma_news JSON file to view</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div id="stats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" style="display: none;">
+            <div class="stat bg-base-200 rounded-lg shadow">
+                <div class="stat-title">Total Articles</div>
+                <div class="stat-value text-primary" id="totalCount">0</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg shadow">
+                <div class="stat-title">Topics Covered</div>
+                <div class="stat-value text-secondary" id="topicCount">0</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg shadow">
+                <div class="stat-title">Sources</div>
+                <div class="stat-value text-accent" id="sourceCount">0</div>
+            </div>
+        </div>
+
+        <!-- Topic Filter -->
+        <div id="topicFilter" class="mb-6" style="display: none;">
+            <h3 class="text-lg font-semibold mb-2">Filter by Topic:</h3>
+            <div id="topicButtons" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Articles List -->
+        <div id="articlesList" class="space-y-4"></div>
+    </div>
+
+    <!-- Article Modal -->
+    <dialog id="articleModal" class="modal">
+        <div class="modal-box max-w-4xl">
+            <h3 class="font-bold text-lg mb-2" id="modalTitle"></h3>
+            <div class="flex flex-wrap gap-2 mb-4" id="modalTopics"></div>
+            <div class="text-sm text-gray-400 mb-4">
+                <span id="modalDate"></span> | <span id="modalSource"></span>
+            </div>
+            <div class="divider"></div>
+            <div class="article-content" id="modalContent"></div>
+            <div class="divider"></div>
+            <div class="bg-base-200 p-4 rounded-lg">
+                <h4 class="font-semibold mb-2">AI Summary</h4>
+                <p id="modalSummary"></p>
+            </div>
+            <div class="modal-action">
+                <a id="modalLink" href="#" target="_blank" class="btn btn-primary">Read Original</a>
+                <button class="btn" onclick="articleModal.close()">Close</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <script>
+        let articlesData = [];
+        let filteredArticles = [];
+        let selectedTopic = null;
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                // Handle both array and object with articles property
+                articlesData = Array.isArray(data) ? data : (data.articles || []);
+                displayData();
+            } catch (error) {
+                alert('Error loading file. Please make sure it\'s a valid JSON file.');
+                console.error(error);
+            }
+        });
+
+        function displayData() {
+            if (articlesData.length === 0) {
+                document.getElementById('articlesList').innerHTML = '<p class="text-center text-gray-400">No articles found in this file.</p>';
+                return;
+            }
+
+            // Show stats and filters
+            document.getElementById('stats').style.display = 'grid';
+            document.getElementById('topicFilter').style.display = 'block';
+
+            // Update stats
+            document.getElementById('totalCount').textContent = articlesData.length;
+            
+            const topics = new Set();
+            const sources = new Set();
+            
+            articlesData.forEach(article => {
+                if (article.topics) article.topics.forEach(topic => topics.add(topic));
+                if (article.source_feed) sources.add(article.source_feed);
+            });
+            
+            document.getElementById('topicCount').textContent = topics.size;
+            document.getElementById('sourceCount').textContent = sources.size;
+
+            // Update last updated
+            const dates = articlesData.map(a => new Date(a.date_processed || a.date_published)).filter(d => !isNaN(d));
+            if (dates.length > 0) {
+                const latest = new Date(Math.max(...dates));
+                document.getElementById('lastUpdated').textContent = latest.toLocaleString();
+            }
+
+            // Create topic filters
+            const topicButtons = document.getElementById('topicButtons');
+            topicButtons.innerHTML = '<button class="btn btn-sm btn-primary" onclick="filterByTopic(null)">All Topics</button>';
+            
+            Array.from(topics).sort().forEach(topic => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-sm btn-outline';
+                btn.textContent = topic;
+                btn.onclick = () => filterByTopic(topic);
+                topicButtons.appendChild(btn);
+            });
+
+            // Display articles
+            filterByTopic(null);
+        }
+
+        function filterByTopic(topic) {
+            selectedTopic = topic;
+            
+            // Update button states
+            document.querySelectorAll('#topicButtons button').forEach(btn => {
+                if (topic === null && btn.textContent === 'All Topics') {
+                    btn.className = 'btn btn-sm btn-primary';
+                } else if (btn.textContent === topic) {
+                    btn.className = 'btn btn-sm btn-primary';
+                } else {
+                    btn.className = 'btn btn-sm btn-outline';
+                }
+            });
+
+            // Filter articles
+            filteredArticles = topic 
+                ? articlesData.filter(article => article.topics && article.topics.includes(topic))
+                : articlesData;
+
+            displayArticles();
+        }
+
+        function displayArticles() {
+            const container = document.getElementById('articlesList');
+            
+            if (filteredArticles.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400">No articles found for this topic.</p>';
+                return;
+            }
+
+            container.innerHTML = filteredArticles.map((article, index) => `
+                <div class="card bg-base-200 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer" onclick="showArticle(${index})">
+                    <div class="card-body">
+                        <h2 class="card-title">${stripHtml(article.title)}</h2>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            ${(article.topics || []).map(topic => 
+                                `<span class="badge badge-primary">${topic}</span>`
+                            ).join('')}
+                        </div>
+                        <p class="text-gray-400">${article.summary ? article.summary.substring(0, 200) + '...' : 'No summary available'}</p>
+                        <div class="text-sm text-gray-500 mt-2">
+                            ${formatDate(article.date_published || article.date_processed)} | 
+                            ${article.source_feed || 'Unknown source'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showArticle(index) {
+            const article = filteredArticles[index];
+            
+            document.getElementById('modalTitle').textContent = stripHtml(article.title);
+            document.getElementById('modalDate').textContent = formatDate(article.date_published || article.date_processed);
+            document.getElementById('modalSource').textContent = article.source_feed || 'Unknown source';
+            document.getElementById('modalContent').innerHTML = article.content 
+                ? `<div class="prose prose-invert max-w-none">${article.content}</div>`
+                : '<p class="text-gray-400">Full content not available</p>';
+            document.getElementById('modalSummary').textContent = article.summary || 'No summary available';
+            document.getElementById('modalLink').href = article.link || '#';
+            
+            // Display topics
+            const topicsContainer = document.getElementById('modalTopics');
+            topicsContainer.innerHTML = (article.topics || []).map(topic => 
+                `<span class="badge badge-primary">${topic}</span>`
+            ).join('');
+            
+            articleModal.showModal();
+        }
+
+        function stripHtml(text) {
+            if (!text) return '';
+            return text.replace(/<[^>]*>/g, '');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown date';
+            const date = new Date(dateString);
+            if (isNaN(date)) return dateString;
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Load sample data if embedded
+        const EMBEDDED_DATA = null; // This will be replaced when generating the file with data
+        if (EMBEDDED_DATA) {
+            articlesData = EMBEDDED_DATA;
+            displayData();
+        }
+    </script>
+</body>
+</html>

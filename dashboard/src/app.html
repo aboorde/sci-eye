@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="pharmalight">
+<html lang="en" data-theme="pharmadark">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
@@ -11,8 +11,8 @@
       // Prevent flash of unstyled content by setting theme before render
       (function() {
         const saved = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = saved || (prefersDark ? 'pharmadark' : 'pharmalight');
+        // Default to dark theme
+        const theme = saved || 'pharmadark';
         document.documentElement.setAttribute('data-theme', theme);
         if (theme === 'pharmadark') {
           document.documentElement.classList.add('dark');

@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 
 // Theme store
 function createThemeStore() {
-  const { subscribe, set, update } = writable('pharmalight');
+  const { subscribe, set, update } = writable('pharmadark');
 
   return {
     subscribe,
@@ -23,10 +23,9 @@ function createThemeStore() {
       });
     },
     init: () => {
-      // Check for saved theme or use system preference
+      // Check for saved theme or default to dark
       const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = saved || (prefersDark ? 'pharmadark' : 'pharmalight');
+      const initialTheme = saved || 'pharmadark';
       
       document.documentElement.setAttribute('data-theme', initialTheme);
       if (initialTheme === 'pharmadark') {

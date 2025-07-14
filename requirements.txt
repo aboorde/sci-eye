@@ -3,3 +3,7 @@ requests==2.31.0
 beautifulsoup4==4.12.3
 openai>=1.95.0
 lxml==5.1.0
+cloudscraper==1.2.71
+newspaper3k==0.2.8
+httpx==0.26.0
+python-dotenv==1.0.1

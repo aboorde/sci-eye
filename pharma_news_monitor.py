@@ -24,6 +24,13 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
+import cloudscraper
+from newspaper import Article
+import httpx
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -42,7 +49,14 @@ def load_config():
             # Add headers if not present
             if 'scraping' in config and 'headers' not in config['scraping']:
                 config['scraping']['headers'] = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache"
                 }
             return config
     else:
@@ -101,7 +115,17 @@ def load_config():
         "scraping": {
             "timeout": 30,
             "max_retries": 3,
-            "rate_limit_delay": 1
+            "rate_limit_delay": 1,
+            "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache"
+            }
         },
         "processing": {
             "parallel_classification": true,
@@ -120,33 +144,114 @@ class PharmaNewsMonitor:
         self.data_dir.mkdir(exist_ok=True)
         self.total_articles_fetched = 0
         self.total_articles_discarded = 0
+        self.total_duplicates_skipped = 0
+        # Create a session for better cookie handling
+        self.session = requests.Session()
+        self.session.headers.update(CONFIG["scraping"]["headers"])
+        # Initialize deduplication system
+        self.seen_articles = set()
+        self.dedup_index_path = self.data_dir / "article_index.json"
+        self._load_article_index()
+        
+    def _load_article_index(self):
+        """Load the article index from disk to track seen articles."""
+        if self.dedup_index_path.exists():
+            try:
+                with open(self.dedup_index_path, 'r') as f:
+                    index_data = json.load(f)
+                    self.seen_articles = set(index_data.get('article_ids', []))
+                    logger.info(f"Loaded {len(self.seen_articles)} article IDs from index")
+            except Exception as e:
+                logger.error(f"Error loading article index: {e}")
+                self.seen_articles = set()
+        else:
+            logger.info("No existing article index found, starting fresh")
+            
+    def _save_article_index(self):
+        """Save the article index to disk."""
+        try:
+            index_data = {
+                'last_updated': datetime.now().isoformat(),
+                'total_articles': len(self.seen_articles),
+                'article_ids': list(self.seen_articles)
+            }
+            with open(self.dedup_index_path, 'w') as f:
+                json.dump(index_data, f, indent=2)
+            logger.info(f"Saved article index with {len(self.seen_articles)} IDs")
+        except Exception as e:
+            logger.error(f"Error saving article index: {e}")
+            
+    def _generate_article_id(self, article: Dict) -> str:
+        """Generate a unique ID for an article based on URL and title."""
+        # Primary: Use URL if available
+        if article.get('link'):
+            return hashlib.md5(article['link'].encode()).hexdigest()
+        # Fallback: Use title + source
+        else:
+            content = f"{article.get('title', '')}_{article.get('source_feed', '')}"
+            return hashlib.md5(content.encode()).hexdigest()
+            
+    def _is_duplicate(self, article: Dict) -> bool:
+        """Check if an article is a duplicate based on its ID."""
+        article_id = self._generate_article_id(article)
+        return article_id in self.seen_articles
+        
+    def _mark_as_seen(self, article: Dict):
+        """Mark an article as seen by adding its ID to the index."""
+        article_id = self._generate_article_id(article)
+        self.seen_articles.add(article_id)
         
     def fetch_rss_feeds(self) -> List[Dict]:
         """Fetch and parse all configured RSS feeds."""
         all_articles = []
+        duplicate_count = 0
         
         for feed_config in CONFIG["rss_feeds"]:
             try:
                 logger.info(f"Fetching RSS feed: {feed_config['name']}")
                 feed = feedparser.parse(feed_config['url'])
+                feed_articles_count = 0
+                feed_duplicates_count = 0
                 
                 for entry in feed.entries:
+                    # Try to get full content from RSS if available
+                    full_content_rss = None
+                    if hasattr(entry, 'content'):
+                        # Some feeds include full content
+                        full_content_rss = entry.content[0].get('value', '') if entry.content else ''
+                    elif hasattr(entry, 'content_encoded'):
+                        full_content_rss = entry.content_encoded
+                    
                     article = {
                         "title": entry.get("title", ""),
                         "description": entry.get("description", entry.get("summary", "")),
                         "link": entry.get("link", ""),
                         "published": entry.get("published", ""),
                         "source_feed": feed_config['name'],
-                        "feed_url": feed_config['url']
+                        "feed_url": feed_config['url'],
+                        "full_content_rss": full_content_rss  # Store RSS content if available
                     }
-                    all_articles.append(article)
                     
-                logger.info(f"Fetched {len(feed.entries)} articles from {feed_config['name']}")
+                    # Check for duplicates
+                    if self._is_duplicate(article):
+                        duplicate_count += 1
+                        feed_duplicates_count += 1
+                        logger.debug(f"Skipping duplicate: {article['title'][:60]}...")
+                    else:
+                        all_articles.append(article)
+                        feed_articles_count += 1
+                    
+                logger.info(f"Fetched {len(feed.entries)} articles from {feed_config['name']}: {feed_articles_count} new, {feed_duplicates_count} duplicates")
                 
             except Exception as e:
                 logger.error(f"Error fetching feed {feed_config['name']}: {str(e)}")
         
-        self.total_articles_fetched = len(all_articles)
+        self.total_articles_fetched = len(all_articles) + duplicate_count
+        self.total_duplicates_skipped = duplicate_count
+        
+        if duplicate_count > 0:
+            logger.info(f"Total duplicates skipped: {duplicate_count}")
+            
         return all_articles
     
     def classify_article(self, article: Dict) -> Tuple[List[str], Dict[str, float]]:
@@ -154,8 +259,8 @@ class PharmaNewsMonitor:
         try:
             threshold = CONFIG.get('ai_settings', {}).get('classification_threshold', 0.7)
             prompt = f"""
-            Analyze the following pharmaceutical news article and identify which of these topics it relates to.
-            An article can relate to multiple topics. Return the relevant topics and confidence scores.
+            Analyze the following pharmaceutical news article and identify which of these topics it DIRECTLY and EXPLICITLY relates to.
+            Be VERY strict - only classify an article under a topic if it is clearly and directly about that specific topic.
             
             Article Title: {article['title']}
             Article Description: {article['description']}
@@ -163,11 +268,26 @@ class PharmaNewsMonitor:
             Topics to consider:
             {', '.join(CONFIG['topics'])}
             
+            Classification guidelines for 100% confidence:
+            - "Success in preclinical study": ONLY if explicitly states successful preclinical results
+            - "Orphan drug designation": ONLY if explicitly states FDA/EMA granted orphan drug designation
+            - "Series B fundraising complete": ONLY if explicitly announces completion of Series B funding round
+            - "Interim analysis results were positive": ONLY if explicitly states positive interim analysis with specific data
+            - "FDA Accelerated Approval": ONLY if explicitly states FDA granted accelerated approval
+            - "Breakthrough therapy designation": ONLY if explicitly states FDA granted breakthrough therapy designation
+            
+            Requirements for 100% confidence:
+            - The exact phrase or very close variant must be present
+            - The action must be completed (not planned or hoped for)
+            - The information must be the main focus of the article
+            - DO NOT infer or interpret - only explicit statements count
+            
             Return your response as a JSON object with two keys:
             - "topics": list of relevant topic names from the list above
             - "confidence": dictionary mapping each identified topic to a confidence score (0.0-1.0)
             
-            Only include topics with confidence > {threshold}.
+            Only include topics with PERFECT confidence of 1.0 (100% certain).
+            If you are not 100% certain about a topic, DO NOT include it.
             """
             
             response = self.client.chat.completions.create(
@@ -191,10 +311,94 @@ class PharmaNewsMonitor:
             return [], {}
     
     def scrape_article_content(self, url: str) -> Optional[str]:
-        """Scrape the full content of an article from its URL."""
-        for attempt in range(CONFIG["scraping"]["max_retries"]):
-            try:
-                response = requests.get(
+        """Scrape the full content of an article from its URL using multiple methods."""
+        # Add delay to be respectful to servers
+        time.sleep(CONFIG["scraping"].get("rate_limit_delay", 1))
+        
+        # Method 1: Try newspaper3k first (handles many edge cases)
+        content = self._try_newspaper(url)
+        if content:
+            return content
+            
+        # Method 2: Try cloudscraper (handles Cloudflare)
+        content = self._try_cloudscraper(url)
+        if content:
+            return content
+            
+        # Method 3: Try standard requests with session
+        content = self._try_requests(url)
+        if content:
+            return content
+            
+        # Method 4: Try httpx as last resort
+        content = self._try_httpx(url)
+        if content:
+            return content
+            
+        logger.warning(f"All methods failed to scrape {url}")
+        return None
+    
+    def _try_newspaper(self, url: str) -> Optional[str]:
+        """Try scraping with newspaper3k library."""
+        try:
+            article = Article(url)
+            article.download()
+            article.parse()
+            
+            if article.text and len(article.text) > 100:
+                logger.info(f"✓ Successfully scraped with newspaper3k")
+                # Limit content length
+                content = article.text
+                if len(content) > 10000:
+                    content = content[:10000] + "..."
+                return content
+        except Exception as e:
+            logger.debug(f"Newspaper3k failed: {str(e)}")
+        return None
+    
+    def _try_cloudscraper(self, url: str) -> Optional[str]:
+        """Try scraping with cloudscraper (handles Cloudflare)."""
+        try:
+            scraper = cloudscraper.create_scraper()
+            response = scraper.get(url, timeout=CONFIG["scraping"]["timeout"])
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            content = self._extract_content_from_soup(soup)
+            
+            if content and len(content) > 100:
+                logger.info(f"✓ Successfully scraped with cloudscraper")
+                return content
+        except Exception as e:
+            logger.debug(f"Cloudscraper failed: {str(e)}")
+        return None
+    
+    def _try_requests(self, url: str) -> Optional[str]:
+        """Try scraping with standard requests."""
+        try:
+            response = self.session.get(
+                url,
+                timeout=CONFIG["scraping"]["timeout"],
+                allow_redirects=True,
+                verify=True
+            )
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            content = self._extract_content_from_soup(soup)
+            
+            if content and len(content) > 100:
+                logger.info(f"✓ Successfully scraped with requests")
+                return content
+        except Exception as e:
+            logger.debug(f"Requests failed: {str(e)}")
+        return None
+    
+    def _try_httpx(self, url: str) -> Optional[str]:
+        """Try scraping with httpx."""
+        try:
+            with httpx.Client(follow_redirects=True) as client:
+                response = client.get(
                     url,
                     headers=CONFIG["scraping"]["headers"],
                     timeout=CONFIG["scraping"]["timeout"]
@@ -202,49 +406,59 @@ class PharmaNewsMonitor:
                 response.raise_for_status()
                 
                 soup = BeautifulSoup(response.content, 'html.parser')
+                content = self._extract_content_from_soup(soup)
                 
-                # Remove script and style elements
-                for script in soup(["script", "style"]):
-                    script.decompose()
-                
-                # Try to find article content (common patterns)
-                article_content = None
-                
-                # Try different content selectors
-                content_selectors = [
-                    'article', 
-                    '[class*="article-content"]',
-                    '[class*="article-body"]',
-                    '[class*="post-content"]',
-                    '[class*="entry-content"]',
-                    'main',
-                    '[role="main"]'
-                ]
-                
-                for selector in content_selectors:
-                    content = soup.select_one(selector)
-                    if content:
-                        article_content = content.get_text(separator=' ', strip=True)
-                        break
-                
-                # Fallback to body if no specific content found
-                if not article_content:
-                    article_content = soup.body.get_text(separator=' ', strip=True) if soup.body else ""
-                
-                # Clean up the text
-                article_content = ' '.join(article_content.split())
-                
-                # Limit content length to avoid token limits
+                if content and len(content) > 100:
+                    logger.info(f"✓ Successfully scraped with httpx")
+                    return content
+        except Exception as e:
+            logger.debug(f"Httpx failed: {str(e)}")
+        return None
+    
+    def _extract_content_from_soup(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract article content from BeautifulSoup object."""
+        # Remove script and style elements
+        for script in soup(["script", "style", "noscript"]):
+            script.decompose()
+        
+        # Try different content selectors
+        content_selectors = [
+            'article',
+            '[class*="article-content"]',
+            '[class*="article-body"]',
+            '[class*="post-content"]',
+            '[class*="entry-content"]',
+            '[class*="story-body"]',
+            '[class*="content-body"]',
+            '.content',
+            'main',
+            '[role="main"]'
+        ]
+        
+        for selector in content_selectors:
+            content = soup.select_one(selector)
+            if content:
+                article_content = content.get_text(separator=' ', strip=True)
+                if article_content and len(article_content) > 100:
+                    # Clean up the text
+                    article_content = ' '.join(article_content.split())
+                    
+                    # Limit content length
+                    if len(article_content) > 10000:
+                        article_content = article_content[:10000] + "..."
+                    
+                    return article_content
+        
+        # Fallback to body if no specific content found
+        if soup.body:
+            article_content = soup.body.get_text(separator=' ', strip=True)
+            article_content = ' '.join(article_content.split())
+            
+            if len(article_content) > 500:  # Only use body if substantial content
                 if len(article_content) > 10000:
                     article_content = article_content[:10000] + "..."
-                
                 return article_content
-                
-            except Exception as e:
-                logger.warning(f"Attempt {attempt + 1} failed to scrape {url}: {str(e)}")
-                if attempt < CONFIG["scraping"]["max_retries"] - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                    
+        
         return None
     
     def generate_summary(self, article: Dict, full_content: Optional[str]) -> str:
@@ -289,12 +503,15 @@ class PharmaNewsMonitor:
         filepath = self.data_dir / filename
         
         # Create output structure
+        unique_articles = self.total_articles_fetched - self.total_duplicates_skipped
         output_data = {
             "run_timestamp": datetime.now().isoformat(),
             "total_articles_fetched": self.total_articles_fetched,
+            "total_duplicates_skipped": self.total_duplicates_skipped,
+            "total_unique_articles": unique_articles,
             "total_articles_classified": len(articles),
             "total_articles_discarded": self.total_articles_discarded,
-            "classification_rate": f"{(len(articles) / self.total_articles_fetched * 100):.1f}%" if self.total_articles_fetched > 0 else "0%",
+            "classification_rate": f"{(len(articles) / unique_articles * 100):.1f}%" if unique_articles > 0 else "0%",
             "configuration": {
                 "feeds": [feed["name"] for feed in CONFIG["rss_feeds"]],
                 "topics_monitored": len(CONFIG["topics"]),
@@ -352,9 +569,22 @@ class PharmaNewsMonitor:
             logger.info(f"\nProcessing {i+1}/{len(classified_articles)}: {article['title'][:80]}...")
             logger.info(f"Topics: {', '.join(topics)}")
             
-            # Scrape full content
+            # Try to get full content
             full_content = None
-            if article['link']:
+            
+            # First check if RSS feed already has full content
+            if article.get('full_content_rss'):
+                # Clean HTML from RSS content
+                soup = BeautifulSoup(article['full_content_rss'], 'html.parser')
+                rss_content = soup.get_text(separator=' ', strip=True)
+                rss_content = ' '.join(rss_content.split())
+                
+                if len(rss_content) > 500:  # Substantial content
+                    full_content = rss_content
+                    logger.info("✓ Using full content from RSS feed")
+            
+            # If no RSS content, try scraping
+            if not full_content and article['link']:
                 logger.info(f"Scraping full content from: {article['link']}")
                 full_content = self.scrape_article_content(article['link'])
                 if full_content:
@@ -368,7 +598,7 @@ class PharmaNewsMonitor:
             
             # Prepare data for storage
             article_data = {
-                "id": hashlib.md5(f"{article['title']}_{article['link']}".encode()).hexdigest(),
+                "id": self._generate_article_id(article),
                 "title": article['title'],
                 "original_description": article['description'],
                 "summary": summary,
@@ -382,6 +612,8 @@ class PharmaNewsMonitor:
             }
             
             processed_articles.append(article_data)
+            # Mark article as seen for future deduplication
+            self._mark_as_seen(article)
             
             # Rate limiting between web scraping
             if i < len(classified_articles) - 1:  # Don't sleep after last article
@@ -409,12 +641,17 @@ class PharmaNewsMonitor:
         else:
             logger.info("\nNo articles matched the classification criteria.")
         
+        # Save the article index for future deduplication
+        self._save_article_index()
+        
         # Summary report
         logger.info("\n=== FINAL SUMMARY ===")
         logger.info(f"Total articles fetched: {self.total_articles_fetched}")
+        logger.info(f"Total duplicates skipped: {self.total_duplicates_skipped}")
+        logger.info(f"Total unique articles processed: {self.total_articles_fetched - self.total_duplicates_skipped}")
         logger.info(f"Total articles classified: {len(processed)}")
         logger.info(f"Total articles discarded: {self.total_articles_discarded}")
-        logger.info(f"Classification rate: {len(processed)/self.total_articles_fetched*100:.1f}%" if self.total_articles_fetched > 0 else "N/A")
+        logger.info(f"Classification rate: {len(processed)/(self.total_articles_fetched - self.total_duplicates_skipped)*100:.1f}%" if (self.total_articles_fetched - self.total_duplicates_skipped) > 0 else "N/A")
         
         # Print topic distribution
         topic_counts = {}
@@ -435,7 +672,8 @@ def main():
     # Check for API key
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        logger.error("Please set the OPENAI_API_KEY environment variable")
+        logger.error("Please set the OPENAI_API_KEY environment variable in your .env file")
+        logger.error("Copy .env.example to .env and add your OpenAI API key")
         return
     
     # Create and run monitor
